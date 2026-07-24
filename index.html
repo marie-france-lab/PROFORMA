@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Générateur de proforma</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+  :root{
+    --ink:#1c2530;
+    --ink-soft:#5b6672;
+    --line:#dfe3e8;
+    --paper:#ffffff;
+    --bg:#f4f6f8;
+    --accent:#0f6b5c;
+    --accent-soft:#e6f2ef;
+    --danger:#b3423a;
+    --radius:8px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  .app{max-width:980px;margin:0 auto;padding:28px 20px 60px;}
+  .app-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:20px;}
+  .app-header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-0.01em;}
+  .app-header p{margin:2px 0 0;color:var(--ink-soft);font-size:13px;}
+
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:22px;}
+  .tab-btn{
+    border:none;background:none;padding:10px 16px;font-size:13.5px;font-weight:600;
+    color:var(--ink-soft);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;
+  }
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 22px;margin-bottom:18px;
+  }
+  .card h2{font-size:14px;margin:0 0 14px;font-weight:700;}
+  .card h3{font-size:12.5px;margin:0 0 10px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;
+    font-size:13.5px;font-family:inherit;color:var(--ink);background:#fff;
+  }
+  textarea{resize:vertical;min-height:56px;}
+  .field{margin-bottom:12px;}
+  .checkline{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .checkline input{width:auto;}
+  .checkline label{margin:0;}
+
+  button{
+    font-family:inherit;cursor:pointer;border-radius:6px;font-weight:600;font-size:13px;
+    border:1px solid var(--line);background:#fff;padding:8px 14px;color:var(--ink);
+  }
+  button:hover{border-color:#c6cdd4;}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .btn-primary:hover{background:#0c5548;}
+  .btn-danger{color:var(--danger);border-color:#e8c9c6;background:#fdf4f3;}
+  .btn-danger:hover{background:#fbe8e6;}
+  .btn-ghost{background:none;border:none;color:var(--accent);padding:4px 6px;}
+
+  .partner-card{border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:12px;background:#fbfcfc;}
+  .partner-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .partner-card-head strong{font-size:13.5px;}
+
+  table.items{width:100%;border-collapse:collapse;margin-bottom:10px;}
+  table.items th{text-align:left;font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;padding:6px 6px;border-bottom:1px solid var(--line);}
+  table.items td{padding:6px 6px;vertical-align:top;}
+  table.items td.qty{width:70px;}
+  table.items td.price{width:130px;}
+  table.items td.total{width:130px;font-weight:600;padding-top:14px;}
+  table.items td.rm{width:30px;text-align:center;padding-top:12px;}
+
+  .totals{display:flex;justify-content:flex-end;margin-top:10px;}
+  .totals table{border-collapse:collapse;min-width:260px;}
+  .totals td{padding:5px 8px;font-size:13.5px;}
+  .totals tr.grand td{font-weight:700;font-size:15px;border-top:1px solid var(--line);padding-top:8px;}
+  .totals td.label{color:var(--ink-soft);}
+  .totals td.val{text-align:right;}
+
+  .toolbar{display:flex;gap:10px;margin-top:16px;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .pill{display:inline-block;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:8px;}
+
+  .hist-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .hist-table th{text-align:left;color:var(--ink-soft);font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:6px;border-bottom:1px solid var(--line);}
+  .hist-table td{padding:8px 6px;border-bottom:1px solid var(--line);}
+  .empty{color:var(--ink-soft);font-size:13px;padding:10px 2px;}
+
+  .status{font-size:12.5px;margin-top:10px;min-height:16px;}
+  .status.ok{color:var(--accent);}
+  .status.err{color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="app-header">
+    <div>
+      <h1 id="brandTitle">Générateur de proforma</h1>
+      <p>Facturation proforma avec tarifs préconfigurés par partenaire</p>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="generate">Nouvelle proforma</button>
+    <button class="tab-btn" data-tab="settings">Réglages</button>
+    <button class="tab-btn" data-tab="history">Historique</button>
+  </div>
+
+  <!-- ===================== GENERATE ===================== -->
+  <div class="panel active" id="panel-generate">
+
+    <div class="card">
+      <h2>Destinataire &amp; référence</h2>
+      <div class="grid3">
+        <div class="field">
+          <label>Numéro de proforma</label>
+          <input type="text" id="pfNumber">
+        </div>
+        <div class="field">
+          <label>Date</label>
+          <input type="date" id="pfDate">
+        </div>
+        <div class="field">
+          <label>Partenaire / canal</label>
+          <select id="pfPartner"></select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Client — nom / société</label>
+          <input type="text" id="clientName" placeholder="Ex: Société ABC">
+        </div>
+        <div class="field">
+          <label>Client — contact (email / tél.)</label>
+          <input type="text" id="clientContact">
+        </div>
+      </div>
+      <div class="field">
+        <label>Client — adresse</label>
+        <textarea id="clientAddress" placeholder="Adresse complète du client"></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Prestations</h2>
+      <table class="items" id="itemsTable">
+        <thead>
+          <tr><th>Description</th><th>Qté</th><th>Prix unitaire</th><th>Montant</th><th></th></tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+      <button id="addRowBtn">+ Ajouter une ligne</button>
+
+      <div class="totals">
+        <table>
+          <tr><td class="label">Sous-total</td><td class="val" id="totSub">0</td></tr>
+          <tr><td class="label" id="vatLabel">TVA</td><td class="val" id="totVat">0</td></tr>
+          <tr class="grand"><td class="label">Total</td><td class="val" id="totGrand">0</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>TVA &amp; mentions</h2>
+      <div class="checkline">
+        <input type="checkbox" id="vatApplicable">
+        <label for="vatApplicable">TVA applicable</label>
+        <div class="field" style="width:100px;margin:0 0 0 14px;">
+          <input type="number" id="vatRate" value="18" step="0.5">
+        </div>
+        <span style="font-size:13px;color:var(--ink-soft);">%</span>
+      </div>
+      <div class="field">
+        <label>Mentions / conditions de paiement (affichées sur le PDF)</label>
+        <textarea id="pfMentions"></textarea>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn-primary" id="generateBtn">Générer le PDF</button>
+    </div>
+    <div class="status" id="genStatus"></div>
+  </div>
+
+  <!-- ===================== SETTINGS ===================== -->
+  <div class="panel" id="panel-settings">
+
+    <div class="card">
+      <h2>Votre société</h2>
+      <div class="grid2">
+        <div class="field">
+          <label>Nom de la société</label>
+          <input type="text" id="coName" placeholder="Ex: MA SOCIÉTÉ SARL">
+        </div>
+        <div class="field">
+          <label>RCCM / N° contribuable (optionnel)</label>
+          <input type="text" id="coReg">
+        </div>
+      </div>
+      <div class="field">
+        <label>Adresse</label>
+        <textarea id="coAddress"></textarea>
+      </div>
+      <div class="grid2">
+        <div class="field">
+          <label>Téléphone</label>
+          <input type="text" id="coPhone">
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="text" id="coEmail">
+        </div>
+      </div>
+      <button class="btn-primary" id="saveCompanyBtn">Enregistrer</button>
+      <div class="status" id="companyStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>Code d'accès aux réglages</h2>
+      <p class="hint" style="margin-bottom:12px;">Empêche l'ouverture accidentelle des Réglages par un membre de l'équipe. ⚠️ Ce n'est pas une sécurité réelle : toute personne qui ouvre le fichier peut lire son code source et contourner ce verrou.</p>
+      <div class="grid2">
+        <div class="field">
+          <label>Définir / changer le code</label>
+          <input type="text" id="newPin" placeholder="Ex: 2026">
+        </div>
+        <div class="field" style="align-self:end;">
+          <button id="setPinBtn">Enregistrer le code</button>
+          <button id="clearPinBtn" class="btn-ghost">Retirer le verrou</button>
+        </div>
+      </div>
+      <div class="status" id="pinStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>Source des partenaires (Google Sheet)</h2>
+      <p class="hint" style="margin-bottom:12px;">Si un lien est renseigné, la liste des partenaires est chargée automatiquement depuis ce Google Sheet à chaque ouverture — vos collaborateurs voient toujours les prix à jour, sans avoir à toucher aux Réglages.</p>
+      <div class="field">
+        <label>Lien CSV publié du Google Sheet</label>
+        <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv">
+      </div>
+      <button class="btn-primary" id="saveSheetBtn">Enregistrer</button>
+      <button id="refreshSheetBtn">Actualiser maintenant</button>
+      <div class="status" id="sheetStatus"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;">Partenaires &amp; règles de prix</h2>
+        <button id="addPartnerBtn">+ Nouveau partenaire</button>
+      </div>
+      <p class="hint" style="margin-bottom:14px;">Chaque partenaire a son propre prix par défaut, sa devise, sa TVA et sa mention. Sélectionnez-le lors de la génération pour tout préremplir automatiquement.</p>
+      <div id="partnersList"></div>
+    </div>
+  </div>
+
+  <!-- ===================== HISTORY ===================== -->
+  <div class="panel" id="panel-history">
+    <div class="card">
+      <h2>Proformas générées</h2>
+      <div id="historyContent"><p class="empty">Aucune proforma générée pour l'instant.</p></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+
+let itemSeq = 0;
+
+// ---------- storage helpers ----------
+async function getVal(key, fallback){
+  try{
+    const r = await window.storage.get(key, false);
+    return r ? JSON.parse(r.value) : fallback;
+  }catch(e){ return fallback; }
+}
+async function setVal(key, value){
+  try{ await window.storage.set(key, JSON.stringify(value), false); }catch(e){ console.error(e); }
+}
+
+// ---------- state ----------
+let company = { name:"", reg:"", address:"", phone:"", email:"" };
+let partners = [];
+let history = [];
+let sheetUrl = "";
+let sheetMode = false;
+
+function uid(){ return 'p' + Math.random().toString(36).slice(2,9); }
+
+function defaultPartners(){
+  return [
+    { id: uid(), name:"Partenaire X", price:0, currency:"XOF", vat:false, vatRate:18, mention:"", terms:"Paiement à réception", priceFree:false },
+    { id: uid(), name:"Partenaire Z", price:0, currency:"XOF", vat:false, vatRate:18, mention:"", terms:"Paiement à réception", priceFree:false }
+  ];
+}
+
+// ---------- CSV parsing (gère les champs entre guillemets) ----------
+function parseCsv(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c === '"' && next === '"'){ field += '"'; i++; }
+      else if(c === '"'){ inQuotes = false; }
+      else { field += c; }
+    } else {
+      if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field = ''; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && next === '\n') i++;
+        row.push(field); field = '';
+        if(row.some(x=>x.trim()!=='')) rows.push(row);
+        row = [];
+      } else { field += c; }
+    }
+  }
+  if(field !== '' || row.length){ row.push(field); if(row.some(x=>x.trim()!=='')) rows.push(row); }
+  if(!rows.length) return [];
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
+  return rows.slice(1).map(r=>{
+    const obj = {};
+    headers.forEach((h,idx)=>{ obj[h] = (r[idx]||'').trim(); });
+    return obj;
+  });
+}
+
+function truthy(v){
+  return ['oui','yes','true','1'].includes((v||'').trim().toLowerCase());
+}
+
+async function loadPartnersFromSheet(url, statusEl){
+  try{
+    const res = await fetch(url, { cache: 'no-store' });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const text = await res.text();
+    const rows = parseCsv(text);
+    if(!rows.length) throw new Error('Feuille vide ou colonnes non reconnues');
+    const parsed = rows.filter(r=>r.nom).map(r=>({
+      id: uid(),
+      name: r.nom || '',
+      price: parseFloat(r.prix) || 0,
+      currency: r.devise || 'XOF',
+      vat: truthy(r.tva),
+      vatRate: parseFloat(r.taux_tva) || 0,
+      terms: r.conditions || '',
+      mention: r.mention || '',
+      priceFree: truthy(r.prix_libre)
+    }));
+    if(!parsed.length) throw new Error('Aucune ligne valide trouvée (colonne "nom" manquante ou vide)');
+    partners = parsed;
+    sheetMode = true;
+    if(statusEl){ statusEl.textContent = `${parsed.length} partenaire(s) chargé(s) depuis le Google Sheet.`; statusEl.className = 'status ok'; }
+    return true;
+  }catch(e){
+    sheetMode = false;
+    if(statusEl){ statusEl.textContent = "Impossible de charger le Sheet (vérifiez le lien et qu'il est bien publié sans restriction). Détail : " + e.message; statusEl.className = 'status err'; }
+    return false;
+  }
+}
+
+// ---------- init ----------
+async function init(){
+  company = await getVal('company-info', company);
+  settingsPin = await getVal('settings-pin', null);
+  sheetUrl = await getVal('sheet-url', '');
+  history = await getVal('proforma-history', []);
+
+  document.getElementById('sheetUrl').value = sheetUrl;
+
+  if(sheetUrl){
+    const ok = await loadPartnersFromSheet(sheetUrl, null);
+    if(!ok){
+      partners = await getVal('partners', null) || defaultPartners();
+    }
+  } else {
+    partners = await getVal('partners', null) || defaultPartners();
+    if(!(await getVal('partners', null))) await setVal('partners', partners);
+  }
+
+  fillCompanyForm();
+  renderPartners();
+  fillPartnerSelect();
+  setDefaultDateAndNumber();
+  addItemRow();
+  renderHistory();
+  recalcTotals();
+}
+
+// ---------- tabs ----------
+let settingsUnlocked = false;
+let settingsPin = null;
+
+function activateTab(btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    if(btn.dataset.tab === 'settings' && settingsPin && !settingsUnlocked){
+      const attempt = prompt("Code d'accès requis pour ouvrir les Réglages :");
+      if(attempt !== settingsPin){
+        if(attempt !== null) alert("Code incorrect.");
+        return;
+      }
+      settingsUnlocked = true;
+    }
+    activateTab(btn);
+  });
+});
+
+// ---------- company ----------
+function fillCompanyForm(){
+  document.getElementById('coName').value = company.name || "";
+  document.getElementById('coReg').value = company.reg || "";
+  document.getElementById('coAddress').value = company.address || "";
+  document.getElementById('coPhone').value = company.phone || "";
+  document.getElementById('coEmail').value = company.email || "";
+  document.getElementById('brandTitle').textContent = company.name ? company.name : "Générateur de proforma";
+}
+
+document.getElementById('saveCompanyBtn').addEventListener('click', async ()=>{
+  company = {
+    name: document.getElementById('coName').value.trim(),
+    reg: document.getElementById('coReg').value.trim(),
+    address: document.getElementById('coAddress').value.trim(),
+    phone: document.getElementById('coPhone').value.trim(),
+    email: document.getElementById('coEmail').value.trim()
+  };
+  await setVal('company-info', company);
+  document.getElementById('brandTitle').textContent = company.name || "Générateur de proforma";
+  const s = document.getElementById('companyStatus');
+  s.textContent = "Enregistré."; s.className = "status ok";
+  setTimeout(()=>{ s.textContent=""; }, 2000);
+});
+
+document.getElementById('saveSheetBtn').addEventListener('click', async ()=>{
+  const url = document.getElementById('sheetUrl').value.trim();
+  const s = document.getElementById('sheetStatus');
+  sheetUrl = url;
+  await setVal('sheet-url', sheetUrl);
+  if(!url){
+    sheetMode = false;
+    partners = await getVal('partners', null) || defaultPartners();
+    s.textContent = "Lien retiré — retour à la liste de partenaires locale.";
+    s.className = "status ok";
+  } else {
+    s.textContent = "Chargement...";
+    s.className = "status";
+    await loadPartnersFromSheet(url, s);
+  }
+  renderPartners();
+  fillPartnerSelect();
+});
+
+document.getElementById('refreshSheetBtn').addEventListener('click', async ()=>{
+  const s = document.getElementById('sheetStatus');
+  if(!sheetUrl){ s.textContent = "Aucun lien enregistré."; s.className = "status err"; return; }
+  s.textContent = "Actualisation...";
+  s.className = "status";
+  await loadPartnersFromSheet(sheetUrl, s);
+  renderPartners();
+  fillPartnerSelect();
+});
+
+document.getElementById('setPinBtn').addEventListener('click', async ()=>{
+  const val = document.getElementById('newPin').value.trim();
+  const s = document.getElementById('pinStatus');
+  if(!val){ s.textContent = "Entrez un code."; s.className = "status err"; return; }
+  settingsPin = val;
+  await setVal('settings-pin', settingsPin);
+  document.getElementById('newPin').value = '';
+  s.textContent = "Code enregistré."; s.className = "status ok";
+  setTimeout(()=>{ s.textContent=""; }, 2000);
+});
+document.getElementById('clearPinBtn').addEventListener('click', async ()=>{
+  settingsPin = null;
+  await setVal('settings-pin', null);
+  const s = document.getElementById('pinStatus');
+  s.textContent = "Verrou retiré."; s.className = "status ok";
+  setTimeout(()=>{ s.textContent=""; }, 2000);
+});
+
+// ---------- partners ----------
+function renderPartners(){
+  const list = document.getElementById('partnersList');
+  const addBtn = document.getElementById('addPartnerBtn');
+  list.innerHTML = "";
+
+  if(sheetMode){
+    addBtn.style.display = 'none';
+    if(partners.length===0){
+      list.innerHTML = '<p class="empty">Aucun partenaire trouvé dans le Google Sheet.</p>';
+      return;
+    }
+    const note = document.createElement('p');
+    note.className = 'hint';
+    note.style.marginBottom = '12px';
+    note.textContent = "Liste en lecture seule — gérée depuis votre Google Sheet. Modifiez les prix directement dans le Sheet, puis cliquez sur \"Actualiser maintenant\" ci-dessus.";
+    list.appendChild(note);
+    partners.forEach(p=>{
+      const card = document.createElement('div');
+      card.className = 'partner-card';
+      card.innerHTML = `
+        <div class="partner-card-head"><strong>${escapeHtml(p.name) || "(sans nom)"}</strong>${p.priceFree ? '<span class="pill">Prix libre</span>' : ''}</div>
+        <p class="hint" style="margin:0;">
+          Prix : ${p.priceFree ? 'saisi manuellement à chaque facture' : (fmtNum(p.price)+' '+p.currency)}
+          &nbsp;·&nbsp; TVA : ${p.vat ? p.vatRate+'%' : 'non applicable'}
+          ${p.terms ? '&nbsp;·&nbsp; '+escapeHtml(p.terms) : ''}
+        </p>
+      `;
+      list.appendChild(card);
+    });
+    return;
+  }
+
+  addBtn.style.display = '';
+  if(partners.length===0){
+    list.innerHTML = '<p class="empty">Aucun partenaire enregistré.</p>';
+    return;
+  }
+  partners.forEach(p=>{
+    const card = document.createElement('div');
+    card.className = 'partner-card';
+    card.innerHTML = `
+      <div class="partner-card-head">
+        <strong>${escapeHtml(p.name) || "(sans nom)"}</strong>
+        <button class="btn-danger" data-action="delete">Supprimer</button>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Nom du partenaire</label><input type="text" data-field="name" value="${escapeAttr(p.name)}"></div>
+        <div class="field"><label>Prix unitaire par défaut</label><input type="number" data-field="price" value="${p.price}" step="0.01" ${p.priceFree ? 'disabled' : ''}></div>
+        <div class="field"><label>Devise</label><input type="text" data-field="currency" value="${escapeAttr(p.currency)}"></div>
+      </div>
+      <div class="checkline">
+        <input type="checkbox" data-field="vat" ${p.vat ? 'checked' : ''}>
+        <label>TVA applicable</label>
+        <div class="field" style="width:90px;margin:0 0 0 14px;">
+          <input type="number" data-field="vatRate" value="${p.vatRate}" step="0.5">
+        </div>
+        <span style="font-size:13px;color:var(--ink-soft);">%</span>
+      </div>
+      <div class="checkline">
+        <input type="checkbox" data-field="priceFree" ${p.priceFree ? 'checked' : ''}>
+        <label>Prix variable — laisser le collaborateur saisir le prix manuellement</label>
+      </div>
+      <div class="field"><label>Conditions de paiement</label><input type="text" data-field="terms" value="${escapeAttr(p.terms)}"></div>
+      <div class="field"><label>Mention affichée sur le PDF</label><textarea data-field="mention">${escapeHtml(p.mention)}</textarea></div>
+    `;
+    card.querySelectorAll('[data-field]').forEach(el=>{
+      const field = el.dataset.field;
+      const evt = el.tagName === 'INPUT' && el.type === 'checkbox' ? 'change' : 'input';
+      el.addEventListener(evt, async ()=>{
+        if(el.type === 'checkbox'){ p[field] = el.checked; }
+        else if(field === 'price' || field === 'vatRate'){ p[field] = parseFloat(el.value)||0; }
+        else { p[field] = el.value; }
+        await setVal('partners', partners);
+        if(field === 'name'){
+          card.querySelector('strong').textContent = p.name || "(sans nom)";
+          fillPartnerSelect();
+        }
+        if(field === 'priceFree'){
+          renderPartners();
+        }
+      });
+    });
+    card.querySelector('[data-action="delete"]').addEventListener('click', async ()=>{
+      if(!confirm(`Supprimer le partenaire "${p.name}" ?`)) return;
+      partners = partners.filter(x=>x.id!==p.id);
+      await setVal('partners', partners);
+      renderPartners();
+      fillPartnerSelect();
+    });
+    list.appendChild(card);
+  });
+}
+
+document.getElementById('addPartnerBtn').addEventListener('click', async ()=>{
+  partners.push({ id: uid(), name:"Nouveau partenaire", price:0, currency:"XOF", vat:false, vatRate:18, mention:"", terms:"", priceFree:false });
+  await setVal('partners', partners);
+  renderPartners();
+  fillPartnerSelect();
+});
+
+function fillPartnerSelect(){
+  const sel = document.getElementById('pfPartner');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Client direct (prix libre)</option>';
+  partners.forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  if([...sel.options].some(o=>o.value===current)) sel.value = current;
+}
+
+document.getElementById('pfPartner').addEventListener('change', ()=>{
+  const p = partners.find(x=>x.id === document.getElementById('pfPartner').value);
+  if(!p) return;
+  document.getElementById('vatApplicable').checked = !!p.vat;
+  document.getElementById('vatRate').value = p.vatRate;
+  document.getElementById('pfMentions').value = [p.mention, p.terms].filter(Boolean).join('\n');
+  // prefill unit price of empty/zero rows, sauf si le partenaire est en "prix libre"
+  document.querySelectorAll('#itemsBody tr').forEach(row=>{
+    const priceInput = row.querySelector('[data-role=price]');
+    if(p.priceFree){
+      priceInput.value = "";
+      priceInput.placeholder = "À saisir manuellement";
+    } else if(!priceInput.value || parseFloat(priceInput.value)===0){
+      priceInput.value = p.price || "";
+      priceInput.placeholder = "";
+      recalcRow(row);
+    }
+  });
+  recalcTotals();
+});
+
+// ---------- items table ----------
+function addItemRow(){
+  itemSeq++;
+  const tbody = document.getElementById('itemsBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" data-role="desc" placeholder="Description de la prestation"></td>
+    <td class="qty"><input type="number" data-role="qty" value="1" min="0" step="1"></td>
+    <td class="price"><input type="number" data-role="price" value="0" step="0.01"></td>
+    <td class="total" data-role="lineTotal">0</td>
+    <td class="rm"><button class="btn-ghost" data-action="rm">✕</button></td>
+  `;
+  tr.querySelector('[data-role=qty]').addEventListener('input', ()=>{ recalcRow(tr); recalcTotals(); });
+  tr.querySelector('[data-role=price]').addEventListener('input', ()=>{ recalcRow(tr); recalcTotals(); });
+  tr.querySelector('[data-action=rm]').addEventListener('click', ()=>{
+    tr.remove();
+    recalcTotals();
+  });
+  document.getElementById('itemsBody').appendChild(tr);
+  return tr;
+}
+document.getElementById('addRowBtn').addEventListener('click', ()=>addItemRow());
+
+function recalcRow(tr){
+  const qty = parseFloat(tr.querySelector('[data-role=qty]').value) || 0;
+  const price = parseFloat(tr.querySelector('[data-role=price]').value) || 0;
+  tr.querySelector('[data-role=lineTotal]').textContent = fmtNum(qty*price);
+}
+
+function getCurrency(){
+  const p = partners.find(x=>x.id === document.getElementById('pfPartner').value);
+  return (p && p.currency) ? p.currency : 'XOF';
+}
+
+function fmtNum(n){
+  const rounded = Math.round((n + Number.EPSILON)*100)/100;
+  const parts = rounded.toFixed(rounded % 1 === 0 ? 0 : 2).split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return parts.join(',');
+}
+
+function recalcTotals(){
+  let sub = 0;
+  document.querySelectorAll('#itemsBody tr').forEach(tr=>{
+    const qty = parseFloat(tr.querySelector('[data-role=qty]').value) || 0;
+    const price = parseFloat(tr.querySelector('[data-role=price]').value) || 0;
+    sub += qty*price;
+  });
+  const vatOn = document.getElementById('vatApplicable').checked;
+  const vatRate = parseFloat(document.getElementById('vatRate').value) || 0;
+  const vat = vatOn ? sub * vatRate/100 : 0;
+  const grand = sub + vat;
+  const cur = getCurrency();
+  document.getElementById('totSub').textContent = fmtNum(sub) + ' ' + cur;
+  document.getElementById('vatLabel').textContent = vatOn ? `TVA (${vatRate}%)` : 'TVA (non applicable)';
+  document.getElementById('totVat').textContent = fmtNum(vat) + ' ' + cur;
+  document.getElementById('totGrand').textContent = fmtNum(grand) + ' ' + cur;
+}
+document.getElementById('vatApplicable').addEventListener('change', recalcTotals);
+document.getElementById('vatRate').addEventListener('input', recalcTotals);
+
+// ---------- numbering / date ----------
+async function setDefaultDateAndNumber(){
+  document.getElementById('pfDate').value = new Date().toISOString().slice(0,10);
+  const counter = await getVal('proforma-counter', 0);
+  const year = new Date().getFullYear();
+  document.getElementById('pfNumber').value = `PF-${year}-${String(counter+1).padStart(4,'0')}`;
+}
+
+// ---------- escaping ----------
+function escapeHtml(s){ return (s||"").replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+function escapeAttr(s){ return (s||"").replace(/"/g,'&quot;'); }
+
+// ---------- history ----------
+function renderHistory(){
+  const el = document.getElementById('historyContent');
+  if(!history.length){
+    el.innerHTML = '<p class="empty">Aucune proforma générée pour l\'instant.</p>';
+    return;
+  }
+  let rows = history.slice().reverse().map(h=>`
+    <tr>
+      <td>${escapeHtml(h.number)}</td>
+      <td>${escapeHtml(h.date)}</td>
+      <td>${escapeHtml(h.client)}</td>
+      <td>${escapeHtml(h.partner || 'Client direct')}</td>
+      <td>${escapeHtml(h.total)}</td>
+    </tr>`).join('');
+  el.innerHTML = `<table class="hist-table">
+    <thead><tr><th>Numéro</th><th>Date</th><th>Client</th><th>Partenaire</th><th>Total</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+// ---------- PDF generation ----------
+document.getElementById('generateBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('genStatus');
+  const clientName = document.getElementById('clientName').value.trim();
+  if(!clientName){
+    status.textContent = "Merci de renseigner le nom du client.";
+    status.className = "status err";
+    return;
+  }
+  const rows = [...document.querySelectorAll('#itemsBody tr')].map(tr=>({
+    desc: tr.querySelector('[data-role=desc]').value.trim(),
+    qty: parseFloat(tr.querySelector('[data-role=qty]').value) || 0,
+    price: parseFloat(tr.querySelector('[data-role=price]').value) || 0
+  })).filter(r=>r.desc);
+
+  if(!rows.length){
+    status.textContent = "Ajoutez au moins une ligne de prestation avec une description.";
+    status.className = "status err";
+    return;
+  }
+
+  const cur = getCurrency();
+  const number = document.getElementById('pfNumber').value.trim();
+  const date = document.getElementById('pfDate').value;
+  const vatOn = document.getElementById('vatApplicable').checked;
+  const vatRate = parseFloat(document.getElementById('vatRate').value) || 0;
+  const partnerId = document.getElementById('pfPartner').value;
+  const partnerObj = partners.find(p=>p.id===partnerId);
+  const mentions = document.getElementById('pfMentions').value.trim();
+
+  let sub = 0; rows.forEach(r=>sub += r.qty*r.price);
+  const vat = vatOn ? sub*vatRate/100 : 0;
+  const grand = sub + vat;
+
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    status.textContent = "La bibliothèque de génération PDF n'a pas pu se charger (connexion internet requise, ou bloquée par le réseau/pare-feu). Réessayez, ou vérifiez votre connexion.";
+    status.className = "status err";
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+
+  // ---- build PDF ----
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  if(typeof doc.autoTable !== 'function'){
+    status.textContent = "Le module de tableau PDF n'a pas pu se charger. Vérifiez votre connexion et réessayez.";
+    status.className = "status err";
+    return;
+  }
+  const pageW = doc.internal.pageSize.getWidth();
+  const marginL = 16, marginR = 16;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(15);
+  doc.setTextColor(20,30,40);
+  doc.text(company.name || 'Votre société', marginL, 20);
+
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  doc.setTextColor(90,100,110);
+  let y = 26;
+  [company.address, [company.phone,company.email].filter(Boolean).join(' · '), company.reg].filter(Boolean).forEach(line=>{
+    const wrapped = doc.splitTextToSize(line, 95);
+    doc.text(wrapped, marginL, y);
+    y += 4.6*wrapped.length;
+  });
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(16);
+  doc.setTextColor(15,107,92);
+  doc.text('FACTURE PROFORMA', pageW-marginR, 20, { align:'right' });
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  doc.setTextColor(60,70,80);
+  doc.text(`N° ${number}`, pageW-marginR, 27, { align:'right' });
+  doc.text(`Date : ${formatDateFR(date)}`, pageW-marginR, 32.5, { align:'right' });
+
+  let headerBottom = Math.max(y, 44);
+  doc.setDrawColor(220,225,230);
+  doc.line(marginL, headerBottom+2, pageW-marginR, headerBottom+2);
+
+  let cy = headerBottom + 10;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.setTextColor(20,30,40);
+  doc.text('Facturé à :', marginL, cy);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10);
+  cy += 5.5;
+  doc.text(clientName, marginL, cy);
+  const addrLines = doc.splitTextToSize(document.getElementById('clientAddress').value.trim(), 90);
+  if(addrLines.length && addrLines[0]){
+    doc.setTextColor(90,100,110); doc.setFontSize(9.5);
+    doc.text(addrLines, marginL, cy+5);
+    cy += 5*addrLines.length;
+  }
+  const contact = document.getElementById('clientContact').value.trim();
+  if(contact){
+    doc.setTextColor(90,100,110); doc.setFontSize(9.5);
+    doc.text(contact, marginL, cy+5);
+    cy += 5;
+  }
+
+  const tableStartY = cy + 12;
+  doc.autoTable({
+    startY: tableStartY,
+    head: [['Description','Qté',`Prix unitaire (${cur})`,`Montant (${cur})`]],
+    body: rows.map(r=>[r.desc, String(r.qty), fmtNum(r.price), fmtNum(r.qty*r.price)]),
+    styles:{ font:'helvetica', fontSize:9.5, textColor:[28,37,48], cellPadding:3 },
+    headStyles:{ fillColor:[15,107,92], textColor:255, fontStyle:'bold' },
+    columnStyles:{ 1:{halign:'right', cellWidth:20}, 2:{halign:'right', cellWidth:38}, 3:{halign:'right', cellWidth:38} },
+    margin:{ left:marginL, right:marginR }
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 8;
+  const totBoxX = pageW - marginR - 70;
+  doc.setFontSize(10);
+  doc.setTextColor(90,100,110);
+  doc.text('Sous-total', totBoxX, finalY);
+  doc.setTextColor(20,30,40);
+  doc.text(fmtNum(sub)+' '+cur, pageW-marginR, finalY, { align:'right' });
+  finalY += 6;
+  doc.setTextColor(90,100,110);
+  doc.text(vatOn ? `TVA (${vatRate}%)` : 'TVA (non applicable)', totBoxX, finalY);
+  doc.setTextColor(20,30,40);
+  doc.text(fmtNum(vat)+' '+cur, pageW-marginR, finalY, { align:'right' });
+  finalY += 3;
+  doc.setDrawColor(220,225,230);
+  doc.line(totBoxX, finalY, pageW-marginR, finalY);
+  finalY += 6;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12);
+  doc.setTextColor(15,107,92);
+  doc.text('Total', totBoxX, finalY);
+  doc.text(fmtNum(grand)+' '+cur, pageW-marginR, finalY, { align:'right' });
+
+  if(mentions){
+    finalY += 16;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.setTextColor(90,100,110);
+    const mLines = doc.splitTextToSize(mentions, pageW-marginL-marginR);
+    doc.text(mLines, marginL, finalY);
+  }
+
+  const pageH = doc.internal.pageSize.getHeight();
+  doc.setFont('helvetica','normal'); doc.setFontSize(8);
+  doc.setTextColor(150,158,166);
+  doc.text('Document proforma — sans valeur de facture définitive.', marginL, pageH-12);
+
+  const filename = (number || 'proforma').replace(/[^a-z0-9-_]/gi,'_') + '.pdf';
+  doc.save(filename);
+
+  // ---- persist ----
+  const counter = await getVal('proforma-counter', 0);
+  await setVal('proforma-counter', counter+1);
+  history.push({
+    number, date, client: clientName,
+    partner: partnerObj ? partnerObj.name : '',
+    total: fmtNum(grand)+' '+cur
+  });
+  await setVal('proforma-history', history);
+  renderHistory();
+
+  status.textContent = "PDF généré et téléchargé.";
+  status.className = "status ok";
+  setTimeout(()=>{ status.textContent=""; }, 3000);
+});
+
+function formatDateFR(iso){
+  if(!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+init();
+})();
+</script>
+</body>
+</html>
